@@ -1,34 +1,40 @@
 #!/usr/bin/env node
-const fs = require('node:fs');
 const path = require('node:path');
-const { run, jsonOut, detectState } = require('./openclaw_browser');
+const { run, jsonOut, waitForState } = require('./openclaw_browser');
+const { loadSessionState, saveSessionState } = require('./session_state');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? process.argv[i + 1] : dflt;
 }
 
-const statePath = arg('state', './chope_state.json');
+const statePath = arg('state');
 const otp = arg('otp');
 const approveDeposit = arg('approve-deposit');
 
-let state;
-try {
-  state = JSON.parse(fs.readFileSync(path.resolve(statePath), 'utf8'));
-} catch (err) {
-  jsonOut({ status: 'failed', error: `cannot read state file: ${err.message}` });
+if (!statePath) {
+  jsonOut({ status: 'failed', error: 'missing --state <state-file>' });
   process.exit(2);
 }
+
+let loaded;
+try {
+  loaded = loadSessionState(statePath);
+} catch (err) {
+  jsonOut({ status: 'failed', error: `cannot read state file: ${err.message}`, state_file: path.resolve(statePath) });
+  process.exit(2);
+}
+const state = loaded.state;
 
 try {
   run(['start']);
   if (state.widget_entry) {
     run(['open', state.widget_entry]);
-    run(['wait', '--ms', '1800']);
   }
 
-  let snapshot = run(['snapshot']);
-  let detected = detectState(snapshot);
+  const w = waitForState({ attempts: 6, intervalMs: 1500 });
+  let snapshot = w.snapshot;
+  let detected = w.state;
 
   if (otp) {
     detected = {
@@ -52,11 +58,19 @@ try {
 
   const out = {
     ...detected,
-    state_file: path.resolve(statePath),
+    state_file: loaded.state_path,
+    detection: { attempts_used: w.attempts_used, timed_out: w.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
   };
 
-  fs.writeFileSync(path.resolve(statePath), JSON.stringify({ ...state, last_status: detected.status, updated_at: new Date().toISOString() }, null, 2));
+  saveSessionState(
+    {
+      ...state,
+      last_status: detected.status,
+      last_transition: detected.next_action ? detected.next_action.type : detected.status
+    },
+    loaded.state_path
+  );
   jsonOut(out);
 } catch (err) {
   jsonOut({ status: 'failed', error: String(err.message || err) });

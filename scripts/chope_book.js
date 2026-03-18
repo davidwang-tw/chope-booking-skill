@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
 const path = require('node:path');
-const { run, jsonOut, buildWidgetUrl, detectState } = require('./openclaw_browser');
+const {
+  run,
+  jsonOut,
+  buildWidgetUrl,
+  waitForState,
+  validateBookingRequest,
+  redactBookingInput
+} = require('./openclaw_browser');
+const { saveSessionState } = require('./session_state');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -22,23 +30,32 @@ try {
   process.exit(2);
 }
 
-const { rid, restaurant, date, time, adults = 2, children = 0, availabilityOnly = false } = req;
-if (!rid || !restaurant || !date || !time) {
-  jsonOut({ status: 'failed', error: 'input must include rid, restaurant, date, time' });
+const validated = validateBookingRequest(req);
+if (!validated.ok) {
+  jsonOut({ status: 'failed', error: 'input validation failed', details: validated.errors });
   process.exit(2);
 }
+req = validated.normalized;
+
+const { rid, restaurant, date, time, adults = 2, children = 0, availabilityOnly = false } = req;
 
 try {
   run(['start']);
   const widgetEntry = buildWidgetUrl({ rid, name: restaurant, date, time, adults, children });
   run(['open', widgetEntry]);
-  run(['wait', '--ms', '2500']);
-
-  let snapshot = run(['snapshot']);
-  let state = detectState(snapshot);
+  const detected = waitForState({ attempts: 6, intervalMs: 1500 });
+  let snapshot = detected.snapshot;
+  let state = detected.state;
 
   if (availabilityOnly) {
-    jsonOut({ ...state, mode: 'availability_only', request: req, widget_entry: widgetEntry, snapshot_preview: snapshot.slice(0, 4000) });
+    jsonOut({
+      ...state,
+      mode: 'availability_only',
+      request: redactBookingInput(req),
+      widget_entry: widgetEntry,
+      detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
+      snapshot_preview: snapshot.slice(0, 4000)
+    });
     process.exit(0);
   }
 
@@ -61,25 +78,37 @@ try {
       }
     };
 
+    const saved = saveSessionState({
+      widget_entry: widgetEntry,
+      last_status: state.status,
+      last_transition: state.next_action ? state.next_action.type : state.status
+    });
+
     const out = {
       ...state,
-      request: req,
+      request: redactBookingInput(req),
       widget_entry: widgetEntry,
       intended_fields: fillSpec,
-      checkpoint_file: path.resolve('./chope_state.json'),
+      checkpoint_file: saved.state_path,
+      detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
       snapshot_preview: snapshot.slice(0, 4000)
     };
-
-    fs.writeFileSync(path.resolve('./chope_state.json'), JSON.stringify({ request: req, widget_entry: widgetEntry, last_status: state.status }, null, 2));
     jsonOut(out);
     process.exit(0);
   }
 
+  const saved = saveSessionState({
+    widget_entry: widgetEntry,
+    last_status: state.status,
+    last_transition: state.next_action ? state.next_action.type : state.status
+  });
+
   jsonOut({
     ...state,
-    request: req,
+    request: redactBookingInput(req),
     widget_entry: widgetEntry,
-    checkpoint_file: path.resolve('./chope_state.json'),
+    checkpoint_file: saved.state_path,
+    detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
   });
 } catch (err) {

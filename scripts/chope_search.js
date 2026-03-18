@@ -16,8 +16,12 @@ try {
   run(['start']);
   const url = `https://www.chope.co/singapore-restaurants?query=${encodeURIComponent(query)}`;
   run(['open', url]);
-  run(['wait', '--ms', '1800']);
-  const snapshot = run(['snapshot']);
+  let snapshot = '';
+  for (let i = 0; i < 5; i += 1) {
+    if (i > 0) run(['wait', '--ms', '1200']);
+    snapshot = run(['snapshot']);
+    if (snapshot.length > 200) break;
+  }
 
   jsonOut({
     status: 'success',

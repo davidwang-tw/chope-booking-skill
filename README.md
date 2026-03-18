@@ -53,11 +53,12 @@ node scripts/chope_availability.js \
 ```bash
 node scripts/chope_book.js --input ./request.json
 ```
+Response includes `checkpoint_file` (secure temp state path).
 
 ### Resume after OTP/deposit gate
 ```bash
-node scripts/chope_resume.js --state ./chope_state.json --otp 123456
-node scripts/chope_resume.js --state ./chope_state.json --approve-deposit yes
+node scripts/chope_resume.js --state "<checkpoint_file>" --otp 123456
+node scripts/chope_resume.js --state "<checkpoint_file>" --approve-deposit yes
 ```
 
 ## Status contract
@@ -65,6 +66,7 @@ All scripts output JSON:
 - `success`
 - `needs_user_input`
 - `unavailable`
+- `unknown`
 - `failed`
 
 `needs_user_input.next_action.type` may be:
@@ -79,9 +81,11 @@ All scripts output JSON:
 - Do not auto-complete payment/deposit without explicit user approval.
 - Do not store OTP or card data.
 - If captcha/anti-bot appears, pause and request manual intervention.
+- Session checkpoint files are stored in temp session storage with `0600` permission and TTL cleanup.
 
 ## Limitations (v1)
 - Conservative form-fill behavior (operator-confirmed for brittle selectors)
+- DOM-first detection still depends on live page structure and may require periodic selector refresh
 - No cancellation/modify flow yet
 - No direct API signing emulation
 

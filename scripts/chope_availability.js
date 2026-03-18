@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-const { run, jsonOut, buildWidgetUrl, detectState } = require('./openclaw_browser');
+const { run, jsonOut, buildWidgetUrl, waitForState, validateBookingRequest, redactBookingInput } = require('./openclaw_browser');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -13,23 +13,47 @@ const time = arg('time');
 const adults = Number(arg('adults', '2'));
 const children = Number(arg('children', '0'));
 
-if (!rid || !name || !date || !time) {
-  jsonOut({ status: 'failed', error: 'missing required args --rid --name --date --time' });
+const validated = validateBookingRequest({
+  rid,
+  restaurant: name,
+  date,
+  time,
+  adults,
+  children
+});
+if (!validated.ok) {
+  jsonOut({ status: 'failed', error: 'input validation failed', details: validated.errors });
   process.exit(2);
 }
 
 try {
   run(['start']);
-  const widgetEntry = buildWidgetUrl({ rid, name, date, time, adults, children });
+  const norm = validated.normalized;
+  const widgetEntry = buildWidgetUrl({
+    rid: norm.rid,
+    name: norm.restaurant,
+    date: norm.date,
+    time: norm.time,
+    adults: norm.adults,
+    children: norm.children
+  });
   run(['open', widgetEntry]);
-  run(['wait', '--ms', '2500']);
-  const snapshot = run(['snapshot']);
-  const state = detectState(snapshot);
+  const detected = waitForState({ attempts: 6, intervalMs: 1500 });
+  const snapshot = detected.snapshot;
+  const state = detected.state;
 
   jsonOut({
     ...state,
-    request: { rid, name, date, time, adults, children },
+    request: redactBookingInput({
+      rid: norm.rid,
+      restaurant: norm.restaurant,
+      date: norm.date,
+      time: norm.time,
+      adults: norm.adults,
+      children: norm.children
+    }),
     widget_entry: widgetEntry,
+    detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
   });
 } catch (err) {

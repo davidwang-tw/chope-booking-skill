@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const { run, jsonOut, browserEvaluate } = require('./openclaw_browser');
+const { correlationId, logEvent, incrementMetric } = require('./observability');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -7,8 +8,12 @@ function arg(name, dflt = '') {
 }
 
 const query = arg('query', '').trim();
+const corr = arg('correlation-id') || correlationId();
+const t0 = Date.now();
 if (!query) {
-  jsonOut({ status: 'failed', error: 'missing --query' });
+  logEvent({ correlation_id: corr, step: 'search.start', status: 'failed', reason_code: 'missing_query' });
+  incrementMetric('search.failed.missing_query');
+  jsonOut({ status: 'failed', error: 'missing --query', correlation_id: corr });
   process.exit(2);
 }
 
@@ -70,6 +75,7 @@ try {
 
   jsonOut({
     status: 'success',
+    correlation_id: corr,
     request: { query },
     search_url: url,
     candidates,
@@ -78,7 +84,18 @@ try {
       : 'No structured candidates extracted; review snapshot manually.',
     snapshot_preview: snapshot.slice(0, 4000)
   });
+  logEvent({
+    correlation_id: corr,
+    step: 'search.complete',
+    status: 'success',
+    candidates_count: candidates.length,
+    duration_ms: Date.now() - t0
+  });
+  incrementMetric('search.status.success');
+  if (candidates.length === 0) incrementMetric('drift.search_empty_candidates');
 } catch (err) {
-  jsonOut({ status: 'failed', error: String(err.message || err) });
+  logEvent({ correlation_id: corr, step: 'search.exception', status: 'failed', reason_code: 'runtime_error', error: String(err.message || err), duration_ms: Date.now() - t0 });
+  incrementMetric('search.failed.runtime');
+  jsonOut({ status: 'failed', error: String(err.message || err), correlation_id: corr });
   process.exit(1);
 }

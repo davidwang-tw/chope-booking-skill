@@ -1,0 +1,10 @@
+{
+  "name": "chope-booking-skill",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "lint:syntax": "node --check scripts/openclaw_browser.js && node --check scripts/session_state.js && node --check scripts/idempotency.js && node --check scripts/observability.js && node --check scripts/chope_search.js && node --check scripts/chope_availability.js && node --check scripts/chope_book.js && node --check scripts/chope_resume.js"
+  }
+}

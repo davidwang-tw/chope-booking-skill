@@ -75,11 +75,11 @@ function markFingerprint(fingerprint, status, attrs = {}) {
   const now = new Date().toISOString();
   const prev = ledger.items[fingerprint] || {};
   ledger.items[fingerprint] = {
+    ...prev,
     fingerprint,
     status,
     created_at: prev.created_at || now,
     updated_at: now,
-    ...prev,
     ...attrs
   };
   writeLedger(ledger);

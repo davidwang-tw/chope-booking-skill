@@ -3,6 +3,7 @@ const path = require('node:path');
 const { run, jsonOut, waitForState } = require('./openclaw_browser');
 const { loadSessionState, saveSessionState } = require('./session_state');
 const { markFingerprint } = require('./idempotency');
+const { correlationId, logEvent, incrementMetric } = require('./observability');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -31,9 +32,13 @@ function buildHandoff({
 const statePath = arg('state');
 const otp = arg('otp');
 const approveDeposit = arg('approve-deposit');
+const corr = arg('correlation-id') || correlationId();
+const t0 = Date.now();
 
 if (!statePath) {
-  jsonOut({ status: 'failed', error: 'missing --state <state-file>' });
+  logEvent({ correlation_id: corr, step: 'resume.start', status: 'failed', reason_code: 'missing_state' });
+  incrementMetric('resume.failed.missing_state');
+  jsonOut({ status: 'failed', error: 'missing --state <state-file>', correlation_id: corr });
   process.exit(2);
 }
 
@@ -41,7 +46,9 @@ let loaded;
 try {
   loaded = loadSessionState(statePath);
 } catch (err) {
-  jsonOut({ status: 'failed', error: `cannot read state file: ${err.message}`, state_file: path.resolve(statePath) });
+  logEvent({ correlation_id: corr, step: 'resume.start', status: 'failed', reason_code: 'state_read_error', error: err.message });
+  incrementMetric('resume.failed.state_read');
+  jsonOut({ status: 'failed', error: `cannot read state file: ${err.message}`, state_file: path.resolve(statePath), correlation_id: corr });
   process.exit(2);
 }
 const state = loaded.state;
@@ -79,6 +86,7 @@ try {
   const out = {
     ...detected,
     state_file: loaded.state_path,
+    correlation_id: corr,
     detection: { attempts_used: w.attempts_used, timed_out: w.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
   };
@@ -101,7 +109,8 @@ try {
     {
       ...state,
       last_status: detected.status,
-      last_transition: detected.next_action ? detected.next_action.type : detected.status
+      last_transition: detected.next_action ? detected.next_action.type : detected.status,
+      last_evidence: detected.evidence || null
     },
     loaded.state_path
   );
@@ -118,8 +127,21 @@ try {
     }
   }
 
+  logEvent({
+    correlation_id: corr,
+    session_id: state.session_id || null,
+    step: 'resume.complete',
+    status: out.status,
+    reason_code: out.handoff?.reason_code || out.next_action?.type || out.status,
+    idempotency_key: state.idempotency_key || null,
+    duration_ms: Date.now() - t0
+  });
+  incrementMetric(`resume.status.${out.status}`);
+  if (out.status === 'unknown') incrementMetric('drift.unknown_state');
   jsonOut(out);
 } catch (err) {
-  jsonOut({ status: 'failed', error: String(err.message || err) });
+  logEvent({ correlation_id: corr, step: 'resume.exception', status: 'failed', reason_code: 'runtime_error', error: String(err.message || err), duration_ms: Date.now() - t0 });
+  incrementMetric('resume.failed.runtime');
+  jsonOut({ status: 'failed', error: String(err.message || err), correlation_id: corr });
   process.exit(1);
 }

@@ -38,6 +38,12 @@ node -v
 openclaw --version
 ```
 
+Optional developer checks:
+```bash
+npm run lint:syntax
+npm test
+```
+
 ## Usage
 ### Search
 ```bash
@@ -108,9 +114,14 @@ When manual review is required, output may include:
 - No direct API signing emulation
 
 ## Remaining Production Gaps
-- No automated fixtures/tests/CI yet
-- No structured observability layer yet (correlation IDs, redacted event logs, metrics)
+- Fixture coverage is still partial (baseline tests/CI now added, needs expansion)
+- Observability exists but is still lightweight (expand metrics/dashboarding)
 - Frontend drift monitoring is not implemented yet
+
+## Observability (Current)
+- `correlation_id` is included in script outputs.
+- Redacted JSONL event logs are written under `CHOPE_LOG_DIR` (or temp default).
+- Basic drift-oriented counters are tracked in `metrics.json` (e.g. unknown states, empty candidates).
 
 ## References
 - `references/chope_api_recon.md`

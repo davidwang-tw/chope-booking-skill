@@ -40,6 +40,7 @@ function saveSessionState(payload, existingPath = null) {
     widget_entry: payload.widget_entry || '',
     idempotency_key: payload.idempotency_key || '',
     last_status: payload.last_status || 'in_progress',
+    last_evidence: payload.last_evidence || null,
     created_at: payload.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString(),
     last_transition: payload.last_transition || null

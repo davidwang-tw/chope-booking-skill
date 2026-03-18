@@ -72,6 +72,19 @@ Contact profile reuse is supported (per user):
 - `user_id` + `profile_id`
 
 Profiles are auto-saved/updated when booking includes complete contact details.
+Set `save_contact: false` to skip profile save/update for a booking.
+
+Contact profile lifecycle:
+- per-user scoped storage (hashed user key at rest)
+- default retention: `180` days (`CHOPE_CONTACT_PROFILE_TTL_DAYS` configurable)
+- profile management via:
+```bash
+node scripts/contact_profiles_cli.js --action list --user-id "<user_id>"
+node scripts/contact_profiles_cli.js --action get-default --user-id "<user_id>"
+node scripts/contact_profiles_cli.js --action set-default --user-id "<user_id>" --profile-id "<id>"
+node scripts/contact_profiles_cli.js --action delete --user-id "<user_id>" --profile-id "<id>"
+node scripts/contact_profiles_cli.js --action delete-all --user-id "<user_id>"
+```
 
 ### Resume after OTP/deposit gate
 ```bash

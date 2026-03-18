@@ -261,7 +261,8 @@ try {
       ]
     });
   }
-  if (userId && req.firstName && req.lastName && req.email && req.mobile) {
+  const saveContact = req.save_contact !== false && req.saveContact !== false;
+  if (userId && saveContact && req.firstName && req.lastName && req.email && req.mobile) {
     const saved = contactProfiles.saveOrUpdate(userId, {
       profile_id: req.profile_id || undefined,
       firstName: req.firstName,
@@ -272,13 +273,15 @@ try {
     out.contact_profile = {
       used_saved_contact: Boolean(usedProfile),
       saved: true,
-      profile_id: saved?.profile_id || null
+      profile_id: saved?.profile_id || null,
+      retention_days: contactProfiles.DEFAULT_TTL_DAYS
     };
   } else if (usedProfile) {
     out.contact_profile = {
       used_saved_contact: true,
       saved: false,
-      profile_id: usedProfile.profile_id
+      profile_id: usedProfile.profile_id,
+      retention_days: contactProfiles.DEFAULT_TTL_DAYS
     };
   }
   logEvent({

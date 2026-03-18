@@ -5,6 +5,7 @@ const crypto = require('node:crypto');
 const { stateDir } = require('./session_state');
 
 const FILE = 'contact-profiles.json';
+const DEFAULT_TTL_DAYS = Number(process.env.CHOPE_CONTACT_PROFILE_TTL_DAYS || 180);
 
 function filePath() {
   return path.join(stateDir(), FILE);
@@ -41,16 +42,18 @@ function profileIdFrom(profile) {
 }
 
 function list(userId) {
-  const s = readStore();
+  const s = cleanupExpired(readStore());
   const k = userKey(userId);
   const bucket = s.users[k] || { profiles: [], default_profile_id: null };
+  writeStore(s);
   return bucket.profiles || [];
 }
 
 function getDefault(userId) {
-  const s = readStore();
+  const s = cleanupExpired(readStore());
   const k = userKey(userId);
   const bucket = s.users[k];
+  writeStore(s);
   if (!bucket || !Array.isArray(bucket.profiles)) return null;
   return bucket.profiles.find((p) => p.profile_id === bucket.default_profile_id) || bucket.profiles[0] || null;
 }
@@ -61,7 +64,7 @@ function getById(userId, profileId) {
 }
 
 function saveOrUpdate(userId, profile, setDefault = true) {
-  const s = readStore();
+  const s = cleanupExpired(readStore());
   const k = userKey(userId);
   const bucket = s.users[k] || { profiles: [], default_profile_id: null };
   const profileId = profile.profile_id || profileIdFrom(profile);
@@ -83,7 +86,7 @@ function saveOrUpdate(userId, profile, setDefault = true) {
 }
 
 function remove(userId, profileId) {
-  const s = readStore();
+  const s = cleanupExpired(readStore());
   const k = userKey(userId);
   const bucket = s.users[k];
   if (!bucket) return false;
@@ -97,10 +100,55 @@ function remove(userId, profileId) {
   return bucket.profiles.length !== before;
 }
 
+function removeAll(userId) {
+  const s = cleanupExpired(readStore());
+  const k = userKey(userId);
+  if (!s.users[k]) return false;
+  delete s.users[k];
+  writeStore(s);
+  return true;
+}
+
+function setDefault(userId, profileId) {
+  const s = cleanupExpired(readStore());
+  const k = userKey(userId);
+  const bucket = s.users[k];
+  if (!bucket || !bucket.profiles.find((p) => p.profile_id === profileId)) return false;
+  bucket.default_profile_id = profileId;
+  s.users[k] = bucket;
+  writeStore(s);
+  return true;
+}
+
+function cleanupExpired(store) {
+  const now = Date.now();
+  const ttlMs = DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000;
+  const out = store || { users: {} };
+  for (const [k, bucket] of Object.entries(out.users || {})) {
+    const profiles = (bucket.profiles || []).filter((p) => {
+      const updated = new Date(p.updated_at || p.created_at || 0).getTime();
+      return Number.isFinite(updated) && (now - updated) <= ttlMs;
+    });
+    if (profiles.length === 0) {
+      delete out.users[k];
+      continue;
+    }
+    bucket.profiles = profiles;
+    if (!profiles.find((p) => p.profile_id === bucket.default_profile_id)) {
+      bucket.default_profile_id = profiles[0].profile_id;
+    }
+    out.users[k] = bucket;
+  }
+  return out;
+}
+
 module.exports = {
   list,
   getDefault,
   getById,
   saveOrUpdate,
-  remove
+  remove,
+  removeAll,
+  setDefault,
+  DEFAULT_TTL_DAYS
 };

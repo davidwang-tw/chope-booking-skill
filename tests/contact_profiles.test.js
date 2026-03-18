@@ -17,9 +17,19 @@ test('save/get/list/delete contact profile', () => {
     email: 'ada@example.com',
     mobile: '+6591234567'
   });
+  const saved2 = profiles.saveOrUpdate(user, {
+    firstName: 'Grace',
+    lastName: 'Hopper',
+    email: 'grace@example.com',
+    mobile: '+6598887777'
+  }, false);
   assert.ok(saved.profile_id);
-  assert.equal(profiles.list(user).length, 1);
+  assert.equal(profiles.list(user).length, 2);
   assert.equal(profiles.getDefault(user).profile_id, saved.profile_id);
+  assert.equal(profiles.setDefault(user, saved2.profile_id), true);
+  assert.equal(profiles.getDefault(user).profile_id, saved2.profile_id);
   assert.equal(profiles.remove(user, saved.profile_id), true);
+  assert.equal(profiles.list(user).length, 1);
+  assert.equal(profiles.removeAll(user), true);
   assert.equal(profiles.list(user).length, 0);
 });

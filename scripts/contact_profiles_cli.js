@@ -12,7 +12,7 @@ const userId = arg('user-id');
 const profileId = arg('profile-id');
 
 if (!action || !userId) {
-  jsonOut({ status: 'failed', error: 'usage: --action <list|get-default|delete> --user-id <id> [--profile-id <id>]' });
+  jsonOut({ status: 'failed', error: 'usage: --action <list|get-default|set-default|delete|delete-all> --user-id <id> [--profile-id <id>]' });
   process.exit(2);
 }
 
@@ -32,6 +32,20 @@ if (action === 'delete') {
     process.exit(2);
   }
   jsonOut({ status: 'success', deleted: profiles.remove(userId, profileId) });
+  process.exit(0);
+}
+
+if (action === 'set-default') {
+  if (!profileId) {
+    jsonOut({ status: 'failed', error: 'set-default requires --profile-id' });
+    process.exit(2);
+  }
+  jsonOut({ status: 'success', updated: profiles.setDefault(userId, profileId) });
+  process.exit(0);
+}
+
+if (action === 'delete-all') {
+  jsonOut({ status: 'success', deleted: profiles.removeAll(userId) });
   process.exit(0);
 }
 

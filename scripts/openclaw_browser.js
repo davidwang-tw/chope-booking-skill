@@ -190,6 +190,11 @@ function parseEvaluateOutput(raw) {
   }
 }
 
+function browserEvaluate(fn) {
+  const out = run(['evaluate', '--fn', fn]);
+  return parseEvaluateOutput(out);
+}
+
 function getDomMarkers() {
   const fn = `() => {
     const has = (sel) => !!document.querySelector(sel);
@@ -202,13 +207,13 @@ function getDomMarkers() {
       has_payment_marker: has('[class*="deposit" i], [class*="payment" i], button, [role="button"]') && /deposit|payment|pay now/i.test(text),
       has_success_marker: has('[class*="confirm" i], [id*="confirm" i], [data-testid*="confirm" i]') || /booking confirmed|reservation confirmed/.test(text),
       has_booking_reference: refTextMatch,
+      has_final_confirmation_url: /confirm|confirmation|success|complete|thank-you|thankyou/i.test(url),
       has_unavailable_marker: has('[class*="unavailable" i], [class*="fully" i], [data-testid*="unavailable" i]') || /no availability|fully booked|not available/.test(text),
       has_captcha_marker: has('iframe[src*="recaptcha"], [id*="captcha" i], [class*="captcha" i]') || /captcha|recaptcha/.test(text)
     };
   }`;
   try {
-    const out = run(['evaluate', '--fn', fn]);
-    const parsed = parseEvaluateOutput(out);
+    const parsed = browserEvaluate(fn);
     return typeof parsed === 'object' && parsed ? parsed : null;
   } catch (_) {
     return null;
@@ -250,8 +255,13 @@ function detectStateDomFirst(snapshotText) {
     };
   }
 
-  if (dom.has_success_marker && dom.has_booking_reference) {
-    return { status: 'success', next_action: null, evidence: { source: 'dom', dom } };
+  const successSignals = [dom.has_success_marker, dom.has_booking_reference, dom.has_final_confirmation_url].filter(Boolean).length;
+  if (successSignals >= 2) {
+    return {
+      status: 'success',
+      next_action: null,
+      evidence: { source: 'dom', dom, success_signals: successSignals }
+    };
   }
 
   if (dom.has_unavailable_marker && !dom.has_success_marker) {
@@ -321,6 +331,7 @@ module.exports = {
   detectState,
   detectStateDomFirst,
   waitForState,
+  browserEvaluate,
   validateBookingRequest,
   redactBookingInput
 };

@@ -9,6 +9,25 @@ function arg(name, dflt = '') {
   return i >= 0 ? process.argv[i + 1] : dflt;
 }
 
+function buildHandoff({
+  state,
+  reasonCode,
+  checkpointFile,
+  sessionId,
+  userSummary,
+  operatorActions
+}) {
+  return {
+    status: 'handoff_required',
+    state,
+    reason_code: reasonCode,
+    checkpoint_file: checkpointFile || null,
+    session_id: sessionId || null,
+    user_summary: userSummary,
+    operator_actions: operatorActions
+  };
+}
+
 const statePath = arg('state');
 const otp = arg('otp');
 const approveDeposit = arg('approve-deposit');
@@ -63,6 +82,20 @@ try {
     detection: { attempts_used: w.attempts_used, timed_out: w.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
   };
+  if (detected.status === 'unknown' || detected.status === 'needs_user_input') {
+    out.handoff = buildHandoff({
+      state: detected.status,
+      reasonCode: detected.status === 'unknown' ? 'ambiguous_dom_state' : (detected.next_action?.type || 'manual_step_required'),
+      checkpointFile: loaded.state_path,
+      sessionId: state.session_id || null,
+      userSummary: 'A human review/action is required before we can safely continue this booking.',
+      operatorActions: [
+        'Inspect the current browser page',
+        'Resolve OTP/payment/captcha/manual blocker',
+        'Resume booking with the same checkpoint file'
+      ]
+    });
+  }
 
   saveSessionState(
     {

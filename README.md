@@ -38,6 +38,7 @@ openclaw --version
 ```bash
 node scripts/chope_search.js --query "japanese tanjong pagar"
 ```
+Returns `candidates[]` with best-effort structured fields (`rid`, `name`, `booking_url`, `confidence`).
 
 ### Availability probe
 ```bash
@@ -76,6 +77,14 @@ All scripts output JSON:
 - `time_selection`
 - `manual_browser_intervention`
 - `form_fill_confirmation`
+
+When manual review is required, output may include:
+- `handoff.status = "handoff_required"`
+- `handoff.reason_code`
+- `handoff.checkpoint_file`
+- `handoff.session_id`
+- `handoff.user_summary`
+- `handoff.operator_actions[]`
 
 ## Safety rules
 - Do not auto-complete payment/deposit without explicit user approval.

@@ -17,6 +17,25 @@ function arg(name, dflt = '') {
   return i >= 0 ? process.argv[i + 1] : dflt;
 }
 
+function buildHandoff({
+  state,
+  reasonCode,
+  checkpointFile,
+  sessionId,
+  userSummary,
+  operatorActions
+}) {
+  return {
+    status: 'handoff_required',
+    state,
+    reason_code: reasonCode,
+    checkpoint_file: checkpointFile || null,
+    session_id: sessionId || null,
+    user_summary: userSummary,
+    operator_actions: operatorActions
+  };
+}
+
 const inputPath = arg('input');
 if (!inputPath) {
   jsonOut({ status: 'failed', error: 'missing --input <json-file>' });
@@ -124,6 +143,21 @@ try {
       detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
       snapshot_preview: snapshot.slice(0, 4000)
     };
+    if (state.status === 'unknown' || state.status === 'needs_user_input') {
+      out.handoff = buildHandoff({
+        state: state.status,
+        reasonCode: state.status === 'unknown' ? 'ambiguous_dom_state' : (state.next_action?.type || 'manual_step_required'),
+        checkpointFile: saved.state_path,
+        sessionId: saved.state.session_id,
+        userSummary: 'Manual review is required before this booking can continue safely.',
+        operatorActions: [
+          'Inspect the current browser page state',
+          'Confirm restaurant/date/time/party details',
+          'Complete required manual step (OTP/payment/captcha) if present',
+          'Resume using chope_resume.js with the checkpoint file'
+        ]
+      });
+    }
     jsonOut(out);
     process.exit(0);
   }
@@ -138,7 +172,7 @@ try {
     session_id: saved.state.session_id
   });
 
-  jsonOut({
+  const out = {
     ...state,
     request: redactBookingInput(req),
     idempotency_key: idempotencyKey,
@@ -146,7 +180,22 @@ try {
     checkpoint_file: saved.state_path,
     detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
-  });
+  };
+  if (state.status === 'unknown' || state.status === 'needs_user_input') {
+    out.handoff = buildHandoff({
+      state: state.status,
+      reasonCode: state.status === 'unknown' ? 'ambiguous_dom_state' : (state.next_action?.type || 'manual_step_required'),
+      checkpointFile: saved.state_path,
+      sessionId: saved.state.session_id,
+      userSummary: 'Manual review is required before this booking can continue safely.',
+      operatorActions: [
+        'Inspect current browser page',
+        'Confirm booking context and any blockers',
+        'Resume booking session'
+      ]
+    });
+  }
+  jsonOut(out);
 } catch (err) {
   jsonOut({ status: 'failed', error: String(err.message || err) });
   process.exit(1);

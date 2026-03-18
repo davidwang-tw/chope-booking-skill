@@ -2,6 +2,11 @@
 
 Browser-first OpenClaw skill for Chope reservation workflows.
 
+## Recommended Positioning
+- Operator-assisted restaurant booking via browser automation
+- Suitable for supervised concierge/chat workflows
+- Not positioned as fully autonomous high-volume booking
+
 ## Scope
 - Restaurant discovery/search
 - Availability checks
@@ -86,6 +91,8 @@ When manual review is required, output may include:
 - `handoff.user_summary`
 - `handoff.operator_actions[]`
 
+`success` uses stronger confirmation proof and requires multiple signals (for example confirmation marker + booking reference, or equivalent).
+
 ## Safety rules
 - Do not auto-complete payment/deposit without explicit user approval.
 - Do not store OTP or card data.
@@ -96,8 +103,14 @@ When manual review is required, output may include:
 ## Limitations (v1)
 - Conservative form-fill behavior (operator-confirmed for brittle selectors)
 - DOM-first detection still depends on live page structure and may require periodic selector refresh
+- Search extraction is best-effort from live page content (not a first-party structured API)
 - No cancellation/modify flow yet
 - No direct API signing emulation
+
+## Remaining Production Gaps
+- No automated fixtures/tests/CI yet
+- No structured observability layer yet (correlation IDs, redacted event logs, metrics)
+- Frontend drift monitoring is not implemented yet
 
 ## References
 - `references/chope_api_recon.md`

@@ -82,6 +82,7 @@ All scripts output JSON:
 - Do not store OTP or card data.
 - If captcha/anti-bot appears, pause and request manual intervention.
 - Session checkpoint files are stored in temp session storage with `0600` permission and TTL cleanup.
+- Duplicate-booking guardrails are enabled via idempotency fingerprinting (confirmed/in-progress intents are blocked).
 
 ## Limitations (v1)
 - Conservative form-fill behavior (operator-confirmed for brittle selectors)

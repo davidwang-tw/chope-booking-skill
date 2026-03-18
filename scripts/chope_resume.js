@@ -2,6 +2,7 @@
 const path = require('node:path');
 const { run, jsonOut, waitForState } = require('./openclaw_browser');
 const { loadSessionState, saveSessionState } = require('./session_state');
+const { markFingerprint } = require('./idempotency');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -71,6 +72,19 @@ try {
     },
     loaded.state_path
   );
+
+  if (state.idempotency_key) {
+    if (detected.status === 'success') {
+      markFingerprint(state.idempotency_key, 'confirmed', { session_id: state.session_id || null });
+    } else if (detected.status === 'unavailable') {
+      markFingerprint(state.idempotency_key, 'unavailable', { session_id: state.session_id || null });
+    } else if (detected.status === 'failed') {
+      markFingerprint(state.idempotency_key, 'failed', { session_id: state.session_id || null });
+    } else {
+      markFingerprint(state.idempotency_key, 'in_progress', { session_id: state.session_id || null });
+    }
+  }
+
   jsonOut(out);
 } catch (err) {
   jsonOut({ status: 'failed', error: String(err.message || err) });

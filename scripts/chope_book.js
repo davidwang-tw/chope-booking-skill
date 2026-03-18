@@ -10,6 +10,7 @@ const {
   redactBookingInput
 } = require('./openclaw_browser');
 const { saveSessionState } = require('./session_state');
+const { toFingerprint, checkDuplicate, markFingerprint } = require('./idempotency');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -36,6 +37,28 @@ if (!validated.ok) {
   process.exit(2);
 }
 req = validated.normalized;
+const idempotencyKey = toFingerprint(req);
+const duplicateCheck = checkDuplicate(idempotencyKey);
+if (duplicateCheck.duplicate) {
+  jsonOut({
+    status: 'needs_user_input',
+    next_action: {
+      type: 'duplicate_risk',
+      prompt: `Duplicate booking risk detected (${duplicateCheck.reason}). Use an explicit operator override policy before retrying this same booking intent.`
+    },
+    duplicate_check: {
+      blocked: true,
+      reason: duplicateCheck.reason,
+      last_record: duplicateCheck.record ? {
+        status: duplicateCheck.record.status,
+        session_id: duplicateCheck.record.session_id,
+        updated_at: duplicateCheck.record.updated_at
+      } : null
+    },
+    request: redactBookingInput(req)
+  });
+  process.exit(0);
+}
 
 const { rid, restaurant, date, time, adults = 2, children = 0, availabilityOnly = false } = req;
 
@@ -48,10 +71,15 @@ try {
   let state = detected.state;
 
   if (availabilityOnly) {
+    markFingerprint(idempotencyKey, state.status === 'success' ? 'confirmed' : (state.status === 'unavailable' ? 'unavailable' : 'in_progress'), {
+      session_id: null,
+      mode: 'availability_only'
+    });
     jsonOut({
       ...state,
       mode: 'availability_only',
       request: redactBookingInput(req),
+      idempotency_key: idempotencyKey,
       widget_entry: widgetEntry,
       detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
       snapshot_preview: snapshot.slice(0, 4000)
@@ -81,12 +109,15 @@ try {
     const saved = saveSessionState({
       widget_entry: widgetEntry,
       last_status: state.status,
-      last_transition: state.next_action ? state.next_action.type : state.status
+      last_transition: state.next_action ? state.next_action.type : state.status,
+      idempotency_key: idempotencyKey
     });
+    markFingerprint(idempotencyKey, 'in_progress', { session_id: saved.state.session_id });
 
     const out = {
       ...state,
       request: redactBookingInput(req),
+      idempotency_key: idempotencyKey,
       widget_entry: widgetEntry,
       intended_fields: fillSpec,
       checkpoint_file: saved.state_path,
@@ -100,12 +131,17 @@ try {
   const saved = saveSessionState({
     widget_entry: widgetEntry,
     last_status: state.status,
-    last_transition: state.next_action ? state.next_action.type : state.status
+    last_transition: state.next_action ? state.next_action.type : state.status,
+    idempotency_key: idempotencyKey
+  });
+  markFingerprint(idempotencyKey, state.status === 'success' ? 'confirmed' : (state.status === 'unavailable' ? 'unavailable' : 'in_progress'), {
+    session_id: saved.state.session_id
   });
 
   jsonOut({
     ...state,
     request: redactBookingInput(req),
+    idempotency_key: idempotencyKey,
     widget_entry: widgetEntry,
     checkpoint_file: saved.state_path,
     detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },

@@ -7,11 +7,13 @@ const {
   buildWidgetUrl,
   waitForState,
   validateBookingRequest,
-  redactBookingInput
+  redactBookingInput,
+  userMessageForState
 } = require('./openclaw_browser');
 const { saveSessionState } = require('./session_state');
 const { toFingerprint, checkDuplicate, markFingerprint } = require('./idempotency');
 const { correlationId, logEvent, incrementMetric } = require('./observability');
+const contactProfiles = require('./contact_profiles');
 
 function arg(name, dflt = '') {
   const i = process.argv.indexOf(`--${name}`);
@@ -66,6 +68,21 @@ if (!validated.ok) {
   process.exit(2);
 }
 req = validated.normalized;
+
+const userId = req.userId || req.user_id || null;
+const requestedProfileId = req.profile_id || null;
+const useSavedContact = Boolean(req.use_saved_contact || req.useSavedContact);
+let usedProfile = null;
+if (userId && (useSavedContact || requestedProfileId)) {
+  usedProfile = requestedProfileId ? contactProfiles.getById(userId, requestedProfileId) : contactProfiles.getDefault(userId);
+  if (usedProfile) {
+    req.firstName = req.firstName || usedProfile.firstName;
+    req.lastName = req.lastName || usedProfile.lastName;
+    req.email = req.email || usedProfile.email;
+    req.mobile = req.mobile || usedProfile.mobile;
+  }
+}
+
 const idempotencyKey = toFingerprint(req);
 const duplicateCheck = checkDuplicate(idempotencyKey);
 if (duplicateCheck.duplicate) {
@@ -85,6 +102,7 @@ if (duplicateCheck.duplicate) {
       } : null
     },
     request: redactBookingInput(req),
+    user_message: 'I found another booking attempt with the same details and need your confirmation before retrying.',
     correlation_id: corr
   };
   logEvent({
@@ -170,6 +188,7 @@ try {
       request: redactBookingInput(req),
       idempotency_key: idempotencyKey,
       correlation_id: corr,
+      user_message: userMessageForState(state),
       widget_entry: widgetEntry,
       intended_fields: fillSpec,
       checkpoint_file: saved.state_path,
@@ -217,12 +236,13 @@ try {
     session_id: saved.state.session_id
   });
 
-  const out = {
-    ...state,
-    request: redactBookingInput(req),
-    idempotency_key: idempotencyKey,
-    correlation_id: corr,
-    widget_entry: widgetEntry,
+    const out = {
+      ...state,
+      request: redactBookingInput(req),
+      idempotency_key: idempotencyKey,
+      correlation_id: corr,
+      user_message: userMessageForState(state),
+      widget_entry: widgetEntry,
     checkpoint_file: saved.state_path,
     detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
     snapshot_preview: snapshot.slice(0, 4000)
@@ -240,6 +260,26 @@ try {
         'Resume booking session'
       ]
     });
+  }
+  if (userId && req.firstName && req.lastName && req.email && req.mobile) {
+    const saved = contactProfiles.saveOrUpdate(userId, {
+      profile_id: req.profile_id || undefined,
+      firstName: req.firstName,
+      lastName: req.lastName,
+      email: req.email,
+      mobile: req.mobile
+    }, true);
+    out.contact_profile = {
+      used_saved_contact: Boolean(usedProfile),
+      saved: true,
+      profile_id: saved?.profile_id || null
+    };
+  } else if (usedProfile) {
+    out.contact_profile = {
+      used_saved_contact: true,
+      saved: false,
+      profile_id: usedProfile.profile_id
+    };
   }
   logEvent({
     correlation_id: corr,

@@ -79,6 +79,9 @@ try {
     request: { query },
     search_url: url,
     candidates,
+    user_message: candidates.length
+      ? 'I found matching restaurants. Please confirm which one you want.'
+      : 'I could not confidently confirm a restaurant match yet.',
     note: candidates.length
       ? 'Structured candidates extracted. Confirm selected candidate rid/name before booking.'
       : 'No structured candidates extracted; review snapshot manually.',

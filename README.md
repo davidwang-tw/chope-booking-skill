@@ -67,6 +67,12 @@ node scripts/chope_book.js --input ./request.json
 ```
 Response includes `checkpoint_file` (secure temp state path).
 
+Contact profile reuse is supported (per user):
+- `user_id` + `use_saved_contact: true`, or
+- `user_id` + `profile_id`
+
+Profiles are auto-saved/updated when booking includes complete contact details.
+
 ### Resume after OTP/deposit gate
 ```bash
 node scripts/chope_resume.js --state "<checkpoint_file>" --otp 123456
@@ -122,6 +128,10 @@ When manual review is required, output may include:
 - `correlation_id` is included in script outputs.
 - Redacted JSONL event logs are written under `CHOPE_LOG_DIR` (or temp default).
 - Basic drift-oriented counters are tracked in `metrics.json` (e.g. unknown states, empty candidates).
+
+## User Messaging Policy
+- User-facing fields (`user_message`) are outcome-focused and avoid implementation details.
+- Internal diagnostics remain available via handoff payloads, reason codes, and logs.
 
 ## References
 - `references/chope_api_recon.md`

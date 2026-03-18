@@ -134,7 +134,7 @@ function detectState(snapshotText) {
   const t = snapshotText.toLowerCase();
 
   if (t.includes('verification code') || t.includes('one-time password') || t.includes('otp')) {
-    return { status: 'needs_user_input', next_action: { type: 'otp', prompt: 'Enter the OTP sent to your phone.' } };
+    return { status: 'needs_user_input', next_action: { type: 'otp', prompt: 'I need a verification step from you to continue.' } };
   }
 
   if (t.includes('deposit') || t.includes('pay now') || t.includes('payment')) {
@@ -142,7 +142,7 @@ function detectState(snapshotText) {
       status: 'needs_user_input',
       next_action: {
         type: 'payment_approval',
-        prompt: 'Deposit/payment step detected. Confirm if you want to continue.'
+        prompt: 'A payment/deposit confirmation is needed before we continue.'
       }
     };
   }
@@ -160,12 +160,28 @@ function detectState(snapshotText) {
       status: 'needs_user_input',
       next_action: {
         type: 'manual_browser_intervention',
-        prompt: 'Captcha detected. Please solve in attached browser, then resume.'
+        prompt: 'I need a quick manual verification step before continuing.'
       }
     };
   }
 
   return { status: 'in_progress', next_action: null };
+}
+
+function userMessageForState(state) {
+  if (!state || !state.status) return 'I am checking your booking now.';
+  if (state.status === 'success') return 'Your booking is confirmed.';
+  if (state.status === 'unavailable') return 'That slot is unavailable. I can check nearby times.';
+  if (state.status === 'unknown') return 'I could not safely confirm the booking state yet.';
+  if (state.status === 'needs_user_input') {
+    const t = state.next_action?.type;
+    if (t === 'otp') return 'I need one verification step from you to continue.';
+    if (t === 'payment_approval') return 'I need your approval to continue this booking step.';
+    if (t === 'manual_browser_intervention') return 'I need a quick manual step to continue.';
+    return 'I need one more step from you to continue.';
+  }
+  if (state.status === 'failed') return 'I could not complete this booking attempt.';
+  return 'I am still working on your booking.';
 }
 
 function parseEvaluateOutput(raw) {
@@ -333,5 +349,6 @@ module.exports = {
   waitForState,
   browserEvaluate,
   validateBookingRequest,
-  redactBookingInput
+  redactBookingInput,
+  userMessageForState
 };

@@ -1,51 +1,18 @@
 # Chope Booking Skill (OpenClaw)
 
-Browser-driven, operator-assisted Chope booking workflow for OpenClaw.  
-Unofficial, best-effort, and intended for supervised or otherwise authorized use cases only.
+Browser-driven, operator-assisted Chope booking workflow for OpenClaw.
 
-## Unofficial project notice
+> Important: Unofficial project. Not affiliated with, endorsed by, or sponsored by Chope. Use only in authorized, policy-compliant contexts.
 
-This repository is an unofficial project and is not affiliated with, endorsed by, or sponsored by Chope.  
-It is provided for research, evaluation, and supervised operator-assisted workflow use.  
-Anyone using this repository is responsible for ensuring that their use complies with applicable law, platform terms, and any required permissions, approvals, or partner agreements.
+## Feature highlights
 
-## Compliance and responsible use
-
-This project is intended only for lawful, authorized, and responsible use.  
-Users are responsible for ensuring that their use complies with:
-
-- applicable laws and regulations,
-- the terms of service and policies of any third-party platform they interact with,
-- and any required written permissions, affiliate approvals, or partner agreements.
-
-This project must not be used to:
-
-- bypass access restrictions or security controls,
-- defeat captcha, OTP, payment, or anti-abuse safeguards,
-- scrape or harvest data in ways prohibited by a platform,
-- or represent itself as an official or endorsed integration where no such relationship exists.
-
-This repository is best understood as an operator-assisted workflow implementation and reference project, not a guaranteed autonomous production booking service.
-
-## Intended use
-
-This project is intended for:
-
-- supervised or operator-assisted concierge workflows,
-- evaluation and prototyping,
-- internal tooling experiments,
-- and approved or permissioned integration contexts.
-
-It is not intended to be presented as a fully autonomous, high-volume, unattended public booking bot.
-
-## Unsupported or discouraged use
-
-This repository is not intended for:
-
-- mass unattended booking automation,
-- circumventing platform restrictions,
-- unauthorized commercial exploitation of third-party services,
-- or any use that conflicts with applicable platform terms or required permissions.
+- Restaurant discovery/search from Chope pages
+- Availability checks through official booking widget flow
+- Booking flow start + resume with checkpoint handoff
+- OTP/deposit pause states with explicit next-action output
+- Contact profile reuse (per-user) with lifecycle controls
+- Idempotency guardrails to reduce duplicate-booking risk
+- Redacted observability logs and correlation IDs for operators
 
 ## Scope
 
@@ -57,8 +24,8 @@ This repository is not intended for:
 
 ## Why browser-driven
 
-Chope widget requests include signed parameters and browser/session context; direct raw API replay can return `401`.  
-This skill intentionally follows the official browser flow instead of emulating backend signing.
+Chope widget requests include signed parameters and browser/session context; direct raw API replay can return `401`.
+This skill follows the official browser flow instead of emulating backend signing.
 
 ## Flow
 
@@ -118,12 +85,21 @@ node scripts/chope_book.js --input ./request.json
 
 Response includes `checkpoint_file` (secure temp state path).
 
+### Resume after OTP/deposit gate
+
+```bash
+node scripts/chope_resume.js --state "<checkpoint_file>" --otp 123456
+node scripts/chope_resume.js --state "<checkpoint_file>" --approve-deposit yes
+```
+
+## Contact profile reuse
+
 Contact profile reuse is supported (per user):
 
 - `user_id` + `use_saved_contact: true`, or
 - `user_id` + `profile_id`
 
-Profiles are auto-saved/updated when booking includes complete contact details.  
+Profiles are auto-saved/updated when booking includes complete contact details.
 Set `save_contact: false` to skip profile save/update for a booking.
 
 Contact profile lifecycle:
@@ -138,13 +114,6 @@ node scripts/contact_profiles_cli.js --action get-default --user-id "<user_id>"
 node scripts/contact_profiles_cli.js --action set-default --user-id "<user_id>" --profile-id "<id>"
 node scripts/contact_profiles_cli.js --action delete --user-id "<user_id>" --profile-id "<id>"
 node scripts/contact_profiles_cli.js --action delete-all --user-id "<user_id>"
-```
-
-### Resume after OTP/deposit gate
-
-```bash
-node scripts/chope_resume.js --state "<checkpoint_file>" --otp 123456
-node scripts/chope_resume.js --state "<checkpoint_file>" --approve-deposit yes
 ```
 
 ## Status contract
@@ -176,22 +145,6 @@ When manual review is required, output may include:
 - `handoff.operator_actions[]`
 
 `success` uses stronger confirmation proof and requires multiple signals (for example confirmation marker + booking reference, or equivalent).
-
-## Privacy and data handling
-
-This project may store limited booking contact information when saved contact reuse is enabled.  
-Current behavior includes:
-
-- optional saved contact profiles for booking convenience,
-- configurable retention periods (`CHOPE_CONTACT_PROFILE_TTL_DAYS`, default `180`),
-- lifecycle controls for listing, updating, setting defaults, and deleting saved profiles,
-- and secure local storage practices for workflow state.
-
-This project is not designed to store OTP values or payment card data.
-
-Operators should ensure that any locally stored state or contact profile data is handled securely and is not committed to version control or shared inappropriately.
-
-For full details, see [PRIVACY.md](./PRIVACY.md).
 
 ## Safety rules
 
@@ -231,9 +184,63 @@ User-facing output should focus on:
 
 Low-level implementation details, browser workarounds, or internal detection mechanics should be kept in internal logs, handoff payloads, and operator-facing diagnostics rather than shown directly to end users.
 
+## Privacy and data handling
+
+This project may store limited booking contact information when saved contact reuse is enabled.
+Current behavior includes:
+
+- optional saved contact profiles for booking convenience,
+- configurable retention periods (`CHOPE_CONTACT_PROFILE_TTL_DAYS`, default `180`),
+- lifecycle controls for listing, updating, setting defaults, and deleting saved profiles,
+- secure local storage practices for workflow state.
+
+This project is not designed to store OTP values or payment card data.
+
+Operators should ensure that any locally stored state or contact profile data is handled securely and is not committed to version control or shared inappropriately.
+
+For full details, see [PRIVACY.md](./PRIVACY.md).
+
+## Compliance and responsible use
+
+This project is intended only for lawful, authorized, and responsible use.
+Users are responsible for ensuring that their use complies with:
+
+- applicable laws and regulations,
+- the terms of service and policies of any third-party platform they interact with,
+- any required written permissions, affiliate approvals, or partner agreements.
+
+This project must not be used to:
+
+- bypass access restrictions or security controls,
+- defeat captcha, OTP, payment, or anti-abuse safeguards,
+- scrape or harvest data in ways prohibited by a platform,
+- represent itself as an official or endorsed integration where no such relationship exists.
+
+This repository is best understood as an operator-assisted workflow implementation and reference project, not a guaranteed autonomous production booking service.
+
+## Intended use
+
+This project is intended for:
+
+- supervised or operator-assisted concierge workflows,
+- evaluation and prototyping,
+- internal tooling experiments,
+- approved or permissioned integration contexts.
+
+It is not intended to be presented as a fully autonomous, high-volume, unattended public booking bot.
+
+## Unsupported or discouraged use
+
+This repository is not intended for:
+
+- mass unattended booking automation,
+- circumventing platform restrictions,
+- unauthorized commercial exploitation of third-party services,
+- any use that conflicts with applicable platform terms or required permissions.
+
 ## Trademark notice
 
-"Chope" and related marks are the property of their respective owners.  
+"Chope" and related marks are the property of their respective owners.
 Any reference in this repository is for descriptive and compatibility purposes only and does not imply affiliation, endorsement, or sponsorship.
 
 ## Disclaimer

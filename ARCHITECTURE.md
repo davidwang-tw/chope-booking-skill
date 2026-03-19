@@ -10,7 +10,7 @@
 
 ## State model
 - Browser snapshot text is used to detect coarse workflow states.
-- `chope_state.json` stores request context and last known status.
+- Session checkpoint files store minimal request context and last known status.
 
 ## Detection logic (current)
 Pattern-based detection for:
@@ -21,4 +21,4 @@ Pattern-based detection for:
 - captcha/manual intervention
 
 ## Rationale
-A robust v1 should avoid dependence on unstable private API signatures and rely on official UI flow.
+A robust v1 should avoid dependence on unstable private API signatures and rely on the official UI flow with supervised operation.

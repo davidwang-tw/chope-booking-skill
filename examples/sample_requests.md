@@ -1,6 +1,6 @@
 # Sample Requests
 
-## Direct booking
+## Operator-assisted booking request
 ```json
 {
   "restaurant": "Original Greens",

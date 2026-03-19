@@ -19,7 +19,7 @@ This is enough to design an OpenClaw skill for:
 - restaurant discovery/search
 - availability lookup
 - reservation preparation / deep-link handoff
-- possibly full booking automation later
+- supervised booking assistance later
 
 It is **not yet enough** for a clean unsupported server-to-server booking client, because request signing and final booking endpoints still need more extraction.
 
@@ -419,7 +419,7 @@ Recommended first version:
 This is realistic and low-risk.
 
 ### Practical v2
-- browser-automated booking assistant
+- browser-driven booking assistant (operator-supervised)
 - fills contact details
 - handles consent checkboxes
 - pauses for OTP from user
@@ -434,7 +434,7 @@ This is feasible, but should probably be implemented as browser automation rathe
   - exact endpoint list for booking creation
   - cookie/session handling
   - OTP orchestration
-  - possibly anti-bot bypass edge cases
+  - complex anti-abuse edge cases that should not be bypassed
 
 Not recommended as first implementation.
 

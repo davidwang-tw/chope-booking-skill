@@ -1,7 +1,7 @@
 ---
 name: chope-booking
 description: >
-  Browser-first Chope booking automation for search, availability checks, and booking flow handoff.
+  Browser-first, operator-assisted Chope booking workflow for search, availability checks, and booking flow handoff.
   Use for requests like "book a table on Chope", "check Chope availability", "reserve at <restaurant>".
   Supports pause/resume for OTP and deposit approval states.
 ---
@@ -9,10 +9,12 @@ description: >
 # Chope Booking Skill (Browser-first)
 
 ## Purpose
-Automate Chope booking via official web flow (not direct API emulation):
+Run a supervised Chope booking workflow via official web flow (not direct API emulation):
 1. `www.chope.co` restaurant/search page
 2. `book.chope.co/booking/check`
 3. `booking.chope.co/widget/#/booking_check`
+
+This skill is unofficial and should be used only in authorized, policy-compliant contexts.
 
 ## Why browser-first
 Chope widget APIs are signed and can return 401 outside browser context. This skill uses browser automation and state checks.
@@ -50,9 +52,9 @@ node scripts/chope_book.js --input ./request.json
 
 ### 4) Resume booking after OTP/payment approval
 ```bash
-node scripts/chope_resume.js --state ./chope_state.json --otp 123456
+node scripts/chope_resume.js --state "<checkpoint_file>" --otp 123456
 # or
-node scripts/chope_resume.js --state ./chope_state.json --approve-deposit yes
+node scripts/chope_resume.js --state "<checkpoint_file>" --approve-deposit yes
 ```
 
 ## Status contract

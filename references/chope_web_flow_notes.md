@@ -1,7 +1,7 @@
-# Chope booking API reconnaissance
+# Chope booking web-flow notes
 
 Date: 2026-03-18
-Scope: light reverse-engineering of Chope's public web flows for https://www.chope.co/singapore-restaurants and the booking widget hosted at `booking.chope.co`.
+Scope: light technical analysis of Chope's public web flows for https://www.chope.co/singapore-restaurants and the booking widget hosted at `booking.chope.co`.
 
 ## Summary
 
@@ -27,9 +27,9 @@ It is **not yet enough** for a clean unsupported server-to-server booking client
 
 ## Important constraints
 
-- `robots.txt` blocks broad crawling; keep scraping light and targeted.
+- avoid broad automated extraction behaviors.
 - Widget API calls include `t=` and `sign=` parameters.
-- Calling these endpoints directly from a fresh server-side client returned `401 Not authorized` during recon.
+- Calling these endpoints directly from a fresh server-side client returned `401 Not authorized` during analysis.
 - The same endpoints worked from the live browser widget context, which suggests one or more of:
   - signed request verification
   - origin / referer checks
@@ -402,7 +402,7 @@ Observed in widget:
 Implication:
 A fully “API-only” OpenClaw skill is unlikely to be reliable without either:
 1. browser automation, or
-2. reverse-engineering the signing algorithm and all required headers/cookies.
+2. understanding signing behavior and all required headers/cookies.
 
 ---
 
@@ -459,7 +459,7 @@ Not recommended as first implementation.
 #### Option A — best first step
 Use:
 - `browser` tool for discovery + widget automation
-- `web_fetch` / scraping for restaurant list pages
+- controlled browser/page parsing for restaurant list pages
 
 Why:
 - avoids fragile signing reimplementation
@@ -468,7 +468,7 @@ Why:
 
 #### Option B — hybrid
 Use:
-- scraping for restaurant catalog
+- browser/page parsing for restaurant catalog
 - browser for availability and final booking
 - later, selectively replace widget steps with direct API calls where stable
 
@@ -476,7 +476,7 @@ This is probably the sweet spot.
 
 ---
 
-## Suggested next reverse-engineering steps
+## Suggested next technical validation steps
 
 1. Capture exact JSON bodies returned by:
    - `loadpage_vars`

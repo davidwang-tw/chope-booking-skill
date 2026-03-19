@@ -213,7 +213,7 @@ This project must not be used to:
 
 - bypass access restrictions or security controls,
 - defeat captcha, OTP, payment, or anti-abuse safeguards,
-- scrape or harvest data in ways prohibited by a platform,
+- extract or collect data in ways prohibited by a platform,
 - represent itself as an official or endorsed integration where no such relationship exists.
 
 This repository is best understood as an operator-assisted workflow implementation and reference project, not a guaranteed autonomous production booking service.
@@ -249,5 +249,5 @@ See [DISCLAIMER.md](./DISCLAIMER.md) for the full disclaimer.
 
 ## References
 
-- `references/chope_api_recon.md`
+- `references/chope_web_flow_notes.md`
 - `SKILL.md`

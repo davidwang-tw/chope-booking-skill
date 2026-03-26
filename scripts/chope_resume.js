@@ -1,33 +1,10 @@
 #!/usr/bin/env node
 const path = require('node:path');
-const { run, jsonOut, waitForState, userMessageForState } = require('./openclaw_browser');
+const { run, jsonOut, waitForState, userMessageForState, SNAPSHOT_PREVIEW_LIMIT } = require('./openclaw_browser');
 const { loadSessionState, saveSessionState } = require('./session_state');
 const { markFingerprint } = require('./idempotency');
 const { correlationId, logEvent, incrementMetric } = require('./observability');
-
-function arg(name, dflt = '') {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : dflt;
-}
-
-function buildHandoff({
-  state,
-  reasonCode,
-  checkpointFile,
-  sessionId,
-  userSummary,
-  operatorActions
-}) {
-  return {
-    status: 'handoff_required',
-    state,
-    reason_code: reasonCode,
-    checkpoint_file: checkpointFile || null,
-    session_id: sessionId || null,
-    user_summary: userSummary,
-    operator_actions: operatorActions
-  };
-}
+const { arg, buildHandoff } = require('./shared');
 
 const statePath = arg('state');
 const otp = arg('otp');
@@ -89,7 +66,7 @@ try {
     correlation_id: corr,
     user_message: userMessageForState(detected),
     detection: { attempts_used: w.attempts_used, timed_out: w.timed_out },
-    snapshot_preview: snapshot.slice(0, 4000)
+    snapshot_preview: snapshot.slice(0, SNAPSHOT_PREVIEW_LIMIT)
   };
   if (detected.status === 'unknown' || detected.status === 'needs_user_input') {
     out.handoff = buildHandoff({

@@ -56,23 +56,34 @@ function logEvent(event) {
 }
 
 function incrementMetric(metric, value = 1) {
+  // Append-only to avoid read-modify-write race between concurrent processes.
+  // appendFileSync is atomic for small writes under PIPE_BUF.
+  appendJsonLine('metrics.jsonl', { metric, value });
+}
+
+function readMetrics() {
   const dir = logDir();
-  ensureDir(dir);
-  const p = path.join(dir, 'metrics.json');
-  let m = {};
+  const p = path.join(dir, 'metrics.jsonl');
   try {
-    m = JSON.parse(fs.readFileSync(p, 'utf8'));
+    const lines = fs.readFileSync(p, 'utf8').trim().split('\n');
+    const m = {};
+    for (const line of lines) {
+      if (!line) continue;
+      try {
+        const { metric, value } = JSON.parse(line);
+        m[metric] = (Number(m[metric]) || 0) + (Number(value) || 0);
+      } catch (_) { /* skip malformed lines */ }
+    }
+    return m;
   } catch (_) {
-    m = {};
+    return {};
   }
-  m[metric] = (Number(m[metric]) || 0) + value;
-  fs.writeFileSync(p, JSON.stringify(m, null, 2), { mode: 0o600 });
-  fs.chmodSync(p, 0o600);
 }
 
 module.exports = {
   correlationId,
   logEvent,
   incrementMetric,
+  readMetrics,
   redact
 };

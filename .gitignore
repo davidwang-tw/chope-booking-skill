@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+*.log
+*.lock
+.DS_Store
+*.swp
+*~
+
+# Session state and runtime data
+chope-booking-sessions/
+chope-booking-logs/
+contact-profiles.json
+idempotency-ledger.json
+metrics.json
+metrics.jsonl
+events.log

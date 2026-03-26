@@ -1,11 +1,7 @@
 #!/usr/bin/env node
 const { jsonOut } = require('./openclaw_browser');
 const profiles = require('./contact_profiles');
-
-function arg(name, dflt = '') {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : dflt;
-}
+const { arg } = require('./shared');
 
 const action = arg('action');
 const userId = arg('user-id');

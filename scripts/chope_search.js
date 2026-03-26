@@ -1,11 +1,7 @@
 #!/usr/bin/env node
-const { run, jsonOut, browserEvaluate } = require('./openclaw_browser');
+const { run, jsonOut, browserEvaluate, SNAPSHOT_PREVIEW_LIMIT } = require('./openclaw_browser');
 const { correlationId, logEvent, incrementMetric } = require('./observability');
-
-function arg(name, dflt = '') {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : dflt;
-}
+const { arg } = require('./shared');
 
 const query = arg('query', '').trim();
 const corr = arg('correlation-id') || correlationId();
@@ -30,8 +26,12 @@ try {
 
   let candidates = [];
   try {
+    const safeQuery = JSON.stringify(query.toLowerCase());
+    if (safeQuery.includes('`') || safeQuery.includes('${')) {
+      throw new Error('query contains unsafe characters for JS template context');
+    }
     const result = browserEvaluate(`() => {
-      const q = ${JSON.stringify(query.toLowerCase())};
+      const q = ${safeQuery};
       const tokens = q.split(/\\s+/).filter(Boolean);
       const anchors = Array.from(document.querySelectorAll('a[href*="chope.co"]'));
       const items = [];
@@ -85,7 +85,7 @@ try {
     note: candidates.length
       ? 'Structured candidates extracted. Confirm selected candidate rid/name before booking.'
       : 'No structured candidates extracted; review snapshot manually.',
-    snapshot_preview: snapshot.slice(0, 4000)
+    snapshot_preview: snapshot.slice(0, SNAPSHOT_PREVIEW_LIMIT)
   });
   logEvent({
     correlation_id: corr,

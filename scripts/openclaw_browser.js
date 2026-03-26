@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 const { spawnSync } = require('node:child_process');
 
+const SNAPSHOT_PREVIEW_LIMIT = 4000;
+
 function run(args) {
   const p = spawnSync('openclaw', ['browser', ...args], { encoding: 'utf8' });
   if (p.status !== 0) {
@@ -236,9 +238,9 @@ function getDomMarkers() {
   }
 }
 
-function detectStateDomFirst(snapshotText) {
+function detectStateDomFirst(snapshotText, domOverride) {
   const textState = detectState(snapshotText);
-  const dom = getDomMarkers();
+  const dom = domOverride !== undefined ? domOverride : getDomMarkers();
   if (!dom) return textState;
 
   if (dom.has_captcha_marker) {
@@ -344,11 +346,14 @@ module.exports = {
   run,
   jsonOut,
   buildWidgetUrl,
+  toChopeDate,
+  toChopeTime,
   detectState,
   detectStateDomFirst,
   waitForState,
   browserEvaluate,
   validateBookingRequest,
   redactBookingInput,
-  userMessageForState
+  userMessageForState,
+  SNAPSHOT_PREVIEW_LIMIT
 };

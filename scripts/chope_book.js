@@ -8,36 +8,14 @@ const {
   waitForState,
   validateBookingRequest,
   redactBookingInput,
-  userMessageForState
+  userMessageForState,
+  SNAPSHOT_PREVIEW_LIMIT
 } = require('./openclaw_browser');
 const { saveSessionState } = require('./session_state');
 const { toFingerprint, checkDuplicate, markFingerprint } = require('./idempotency');
 const { correlationId, logEvent, incrementMetric } = require('./observability');
 const contactProfiles = require('./contact_profiles');
-
-function arg(name, dflt = '') {
-  const i = process.argv.indexOf(`--${name}`);
-  return i >= 0 ? process.argv[i + 1] : dflt;
-}
-
-function buildHandoff({
-  state,
-  reasonCode,
-  checkpointFile,
-  sessionId,
-  userSummary,
-  operatorActions
-}) {
-  return {
-    status: 'handoff_required',
-    state,
-    reason_code: reasonCode,
-    checkpoint_file: checkpointFile || null,
-    session_id: sessionId || null,
-    user_summary: userSummary,
-    operator_actions: operatorActions
-  };
-}
+const { arg, buildHandoff } = require('./shared');
 
 const inputPath = arg('input');
 const corr = arg('correlation-id') || correlationId();
@@ -140,7 +118,7 @@ try {
       widget_entry: widgetEntry,
       correlation_id: corr,
       detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
-      snapshot_preview: snapshot.slice(0, 4000)
+      snapshot_preview: snapshot.slice(0, SNAPSHOT_PREVIEW_LIMIT)
     };
     logEvent({
       correlation_id: corr,
@@ -193,7 +171,7 @@ try {
       intended_fields: fillSpec,
       checkpoint_file: saved.state_path,
       detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
-      snapshot_preview: snapshot.slice(0, 4000)
+      snapshot_preview: snapshot.slice(0, SNAPSHOT_PREVIEW_LIMIT)
     };
     if (state.status === 'unknown' || state.status === 'needs_user_input') {
       out.handoff = buildHandoff({
@@ -236,16 +214,16 @@ try {
     session_id: saved.state.session_id
   });
 
-    const out = {
-      ...state,
-      request: redactBookingInput(req),
-      idempotency_key: idempotencyKey,
-      correlation_id: corr,
-      user_message: userMessageForState(state),
-      widget_entry: widgetEntry,
+  const out = {
+    ...state,
+    request: redactBookingInput(req),
+    idempotency_key: idempotencyKey,
+    correlation_id: corr,
+    user_message: userMessageForState(state),
+    widget_entry: widgetEntry,
     checkpoint_file: saved.state_path,
     detection: { attempts_used: detected.attempts_used, timed_out: detected.timed_out },
-    snapshot_preview: snapshot.slice(0, 4000)
+    snapshot_preview: snapshot.slice(0, SNAPSHOT_PREVIEW_LIMIT)
   };
   if (state.status === 'unknown' || state.status === 'needs_user_input') {
     out.handoff = buildHandoff({
@@ -263,7 +241,7 @@ try {
   }
   const saveContact = req.save_contact !== false && req.saveContact !== false;
   if (userId && saveContact && req.firstName && req.lastName && req.email && req.mobile) {
-    const saved = contactProfiles.saveOrUpdate(userId, {
+    const savedProfile = contactProfiles.saveOrUpdate(userId, {
       profile_id: req.profile_id || undefined,
       firstName: req.firstName,
       lastName: req.lastName,
@@ -273,7 +251,7 @@ try {
     out.contact_profile = {
       used_saved_contact: Boolean(usedProfile),
       saved: true,
-      profile_id: saved?.profile_id || null,
+      profile_id: savedProfile?.profile_id || null,
       retention_days: contactProfiles.DEFAULT_TTL_DAYS
     };
   } else if (usedProfile) {

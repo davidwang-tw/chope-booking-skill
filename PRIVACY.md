@@ -15,7 +15,8 @@ This project is not intended to store OTP values or payment card data.
 
 - Contact profile fields needed for booking form reuse (for example name, email, mobile, and optional preferences).
 - Workflow checkpoint metadata used by resume flows.
-- Idempotency and correlation identifiers for duplicate-prevention and debugging.
+- Idempotency fingerprints derived from booking parameters and a one-way hash of contact details (original contact values are not stored in the idempotency ledger).
+- Correlation identifiers for debugging and log tracing.
 
 ## What should not be stored
 

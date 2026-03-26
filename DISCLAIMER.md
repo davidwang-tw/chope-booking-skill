@@ -18,6 +18,8 @@ This repository does not guarantee:
 
 This repository must not be used to bypass captcha, OTP, payment safeguards, access restrictions, anti-abuse controls, or other platform protections.
 
+This project interacts with third-party services exclusively through their public browser-facing interfaces. It does not reverse-engineer, decompile, or replicate proprietary API signing or authentication mechanisms.
+
 Nothing in this repository or its documentation constitutes legal advice.
 
 Maintainers are not responsible for third-party account restrictions, service interruptions, or policy violations resulting from unauthorized use.

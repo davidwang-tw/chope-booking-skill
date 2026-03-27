@@ -80,11 +80,24 @@ node -v   # Node.js 20+
 openclaw --version
 ```
 
+First-run verification:
+
+```bash
+npm run doctor
+```
+
+If the doctor passes, the skill is ready to use inside an OpenClaw instance.
+If it fails, fix the reported prerequisite first. The two common requirements are:
+
+- `openclaw` must be on `PATH`
+- the instance must have browser support enabled
+
 ## Development
 
 Run syntax checks and tests:
 
 ```bash
+npm run doctor
 npm run lint:syntax   # Checks all 11 scripts for parse errors
 npm test              # Runs 43 tests across 7 test files
 ```

@@ -30,6 +30,16 @@ Chope widget requests require browser/session context that cannot be reliably re
 
 ## Commands
 
+## First run
+
+From the skill root, run:
+
+```bash
+npm run doctor
+```
+
+That checks the basic prerequisites for using this skill inside OpenClaw.
+
 ### 1) Search restaurants
 ```bash
 node scripts/chope_search.js --query "japanese tanjong pagar"

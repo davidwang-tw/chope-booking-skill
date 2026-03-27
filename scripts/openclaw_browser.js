@@ -3,11 +3,53 @@ const { spawnSync } = require('node:child_process');
 
 const SNAPSHOT_PREVIEW_LIMIT = 4000;
 
+function normalizeBrowserArgs(args) {
+  const arr = Array.isArray(args) ? [...args] : [];
+  const cmd = arr[0];
+  if (!cmd) return arr;
+
+  // Current OpenClaw CLI expects positional subcommands like:
+  //   openclaw browser open <url>
+  //   openclaw browser wait --time <ms>
+  // not custom wrappers like ['open', url] + legacy flags.
+  if (cmd === 'open' && arr[1] && !String(arr[1]).startsWith('--')) {
+    return ['open', arr[1]];
+  }
+
+  if (cmd === 'navigate' && arr[1] && !String(arr[1]).startsWith('--')) {
+    return ['navigate', arr[1]];
+  }
+
+  if (cmd === 'wait') {
+    const msIndex = arr.indexOf('--ms');
+    if (msIndex >= 0 && arr[msIndex + 1]) {
+      return ['wait', '--time', arr[msIndex + 1]];
+    }
+  }
+
+  if (cmd === 'snapshot') {
+    return ['snapshot'];
+  }
+
+  if (cmd === 'evaluate') {
+    return ['evaluate', ...arr.slice(1)];
+  }
+
+  return arr;
+}
+
 function run(args) {
-  const p = spawnSync('openclaw', ['browser', ...args], { encoding: 'utf8' });
+  const normalized = normalizeBrowserArgs(args);
+  const p = spawnSync('openclaw', ['browser', ...normalized], { encoding: 'utf8', timeout: 45000 });
+  if (p.error && p.error.code === 'ENOENT') {
+    throw new Error(
+      'openclaw CLI not found on PATH. Install OpenClaw or run this skill inside an OpenClaw instance.'
+    );
+  }
   if (p.status !== 0) {
     const msg = (p.stderr || p.stdout || '').trim();
-    throw new Error(msg || `openclaw browser failed: ${args.join(' ')}`);
+    const detail = p.error?.message ? ` (${p.error.message})` : '';
+    throw new Error(msg || `openclaw browser failed: ${normalized.join(' ')}${detail}`);
   }
   return (p.stdout || '').trim();
 }
